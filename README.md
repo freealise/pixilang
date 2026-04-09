@@ -1,5 +1,5 @@
 ### Pixilang Programming Language
-https://warmplace.ru/soft/pixilang
+by [Alexander Zolotov](https://www.github.com/pixicoder)
   
 ```
 pixilang3  
@@ -11,4 +11,3 @@ pixilang3
   /make - build scripts; use it to build the Pixilang for different platforms with different options;  
 lib_* - auxiliary libraries for building the Pixilang from source;  
 ```
-
