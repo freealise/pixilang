@@ -1,0 +1,104 @@
+set_pixel_size( WINDOW_XSIZE / 480 )
+resize( get_screen(), WINDOW_XSIZE, WINDOW_YSIZE )
+
+start_timer( 0 )
+
+matrix = new( 4, 4, FLOAT ) //transformation matrix
+num_points = 32
+points = new( 3, num_points, FLOAT )
+points2 = new( 3, num_points, FLOAT ) //modified points
+for( i = 0; i < num_points; i + 1 )
+{
+    points[ 0, i ] = ( rand() & 255 ) - 128 //x
+    points[ 1, i ] = ( rand() & 255 ) - 128 //y
+    points[ 2, i ] = ( rand() & 255 ) - 128 //z
+}
+
+while 1
+{
+
+t = get_timer( 0 ) / 100
+clear( #202020 )
+
+matrix_4x4_reset( matrix )
+matrix_4x4_rotate( t, 0, 0, 1, matrix )
+t_point( points, matrix, points2, 0, 0, num_points )
+
+for( i = 0; i < num_points; i + 1 )
+{
+    $x = points2[ 0, i ]
+    $y = points2[ 1, i ]
+    $z = points2[ 2, i ]
+    dot( $x, $y, YELLOW )
+}
+
+while( get_event() ) { if EVT[ EVT_TYPE ] == EVT_QUIT { halt } }
+frame()
+
+}
+
+fn matrix_4x4_reset( $m )
+{
+    clean( $m, 0 )
+    $m[ 0 ] = 1;
+    $m[ 4 + 1 ] = 1;
+    $m[ 8 + 2 ] = 1;
+    $m[ 12 + 3 ] = 1;
+}
+
+fn matrix_4x4_mul( $res, $m1, $m2 )
+{
+    $res_ptr = 0;
+    for( $x = 0; $x < 4; $x + 1 )
+    {
+        for( $y = 0; $y < 4; $y + 1 )
+        {
+            $res[ $res_ptr ] = 0;
+            for( $k = 0; $k < 4; $k + 1 )
+            {
+                $res[ $res_ptr ] + $m1[ $y + $k * 4 ] * $m2[ $x * 4 + $k ];
+            }
+            $res_ptr + 1;
+        }
+    }
+}
+
+fn matrix_4x4_rotate( $angle, $x, $y, $z, $m )
+{
+    if g_tmp_matrix1 <= 0 { g_tmp_matrix1 = new( 4, 4, FLOAT ) }
+    if g_tmp_matrix2 <= 0 { g_tmp_matrix2 = new( 4, 4, FLOAT ) }
+
+    $angle / 180;
+    $angle * M_PI;
+
+    //Normalize vector:
+    $inv_length = 1.0 / sqrt( $x * $x + $y * $y + $z * $z );
+    $x * $inv_length;
+    $y * $inv_length;
+    $z * $inv_length;
+
+    //Create the matrix:
+    $c = cos( $angle );
+    $s = sin( $angle );
+    $cc = 1 - $c;
+    $r = g_tmp_matrix1
+    $res = g_tmp_matrix2
+    $r[ 0 + 0 ] = $x * $x * $cc + $c;
+    $r[ 4 + 0 ] = $x * $y * $cc - $z * $s;
+    $r[ 8 + 0 ] = $x * $z * $cc + $y * $s;
+    $r[ 12 + 0 ] = 0;
+    $r[ 0 + 1 ] = $y * $x * $cc + $z * $s;
+    $r[ 4 + 1 ] = $y * $y * $cc + $c;
+    $r[ 8 + 1 ] = $y * $z * $cc - $x * $s;
+    $r[ 12 + 1 ] = 0;
+    $r[ 0 + 2 ] = $x * $z * $cc - $y * $s;
+    $r[ 4 + 2 ] = $y * $z * $cc + $x * $s;
+    $r[ 8 + 2 ] = $z * $z * $cc + $c;
+    $r[ 12 + 2 ] = 0;
+    $r[ 0 + 3 ] = 0;
+    $r[ 4 + 3 ] = 0;
+    $r[ 8 + 3 ] = 0;
+    $r[ 12 + 3 ] = 1;
+    matrix_4x4_mul( $res, $m, $r );
+    copy( $m, $res )
+}

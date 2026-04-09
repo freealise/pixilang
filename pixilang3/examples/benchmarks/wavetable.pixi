@@ -1,0 +1,129 @@
+set_pixel_size( WINDOW_XSIZE / 480 )
+resize( get_screen(), WINDOW_XSIZE, WINDOW_YSIZE )
+scr = get_screen()
+xsize = get_xsize( scr )
+ysize = get_ysize( scr )
+
+clear()
+print( "WAVETABLE TEST..." )
+frame()
+
+dest_buf_size = 1024
+dest_buf_i16 = new( dest_buf_size, 1, INT16 )
+dest_buf_i32 = new( dest_buf_size, 1, INT32 )
+dest_buf_f32 = new( dest_buf_size, 1, FLOAT32 )
+clean( dest_buf_i16 )
+clean( dest_buf_i32 )
+clean( dest_buf_f32 )
+
+table = new( 32768, 1, INT16 )
+ftable = new( 32768, 1, FLOAT32 )
+for( i = 0; i < 32768; i + 1 )
+{
+    vv = i / 32768 * 2 * M_PI
+    v = sin( vv )
+    table[ i ] = v * 32767
+    ftable[ i ] = v
+}
+
+BUG_TEST = 0 //1 - reproduce -O3 optimization bug of gcc 12.2 x86_64: wrong values in dest_buf_i32[]
+
+gen_count = 1024
+if BUG_TEST { gen_count = 128 }
+amp = new( gen_count, 1, INT32 )
+amp_delta = new( gen_count, 1, INT32 )
+pos = new( gen_count, 1, INT32 )
+pos_delta = new( gen_count, 1, INT32 )
+clean( amp )
+clean( amp_delta )
+clean( pos )
+clean( pos_delta )
+for( i = 0; i < gen_count; i + 1 )
+{
+    amp_delta[ i ] = 1
+    pos_delta[ i ] = rand() + 1
+}
+
+if BUG_TEST
+{
+    clean( amp )
+    clean( amp_delta )
+    clean( pos )
+    clean( pos_delta )
+    amp[ 120 ] = 10000 << 16
+    pos_delta[ 120 ] = 1167692
+}
+
+cnt = 1000 //number of tests
+
+t1 = get_ticks()
+
+for( i = 0; i < cnt; i + 1 )
+{
+    wavetable_generator(
+	dest_buf_i16, 0, dest_buf_size,
+	table,
+	amp, amp_delta,
+	pos, pos_delta, 
+	0,
+	1, //step
+	gen_count
+    )
+}
+
+t2 = get_ticks()
+
+for( i = 0; i < cnt; i + 1 )
+{
+    wavetable_generator(
+	dest_buf_i32, 0, dest_buf_size,
+	table,
+	amp, amp_delta,
+	pos, pos_delta, 
+	0,
+	1, //step
+	gen_count
+    )
+}
+
+t3 = get_ticks()
+
+for( i = 0; i < cnt; i + 1 )
+{
+    wavetable_generator(
+	dest_buf_f32, 0, dest_buf_size,
+	ftable,
+	amp, amp_delta,
+	pos, pos_delta, 
+	0,
+	1, //step
+	gen_count
+    )
+}
+
+t4 = get_ticks()
+
+duration1 = (t2-t1)/get_tps()
+duration2 = (t3-t2)/get_tps()
+duration3 = (t4-t3)/get_tps()
+
+logf( "i16 vals: %d %d %d ... %d %d %d\n", dest_buf_i16[ 0 ], dest_buf_i16[ 1 ], dest_buf_i16[ 2 ], dest_buf_i16[ dest_buf_size - 3 ], dest_buf_i16[ dest_buf_size - 2 ], dest_buf_i16[ dest_buf_size - 1 ] )
+logf( "i32 vals: %d %d %d ... %d %d %d\n", dest_buf_i32[ 0 ], dest_buf_i32[ 1 ], dest_buf_i32[ 2 ], dest_buf_i32[ dest_buf_size - 3 ], dest_buf_i32[ dest_buf_size - 2 ], dest_buf_i32[ dest_buf_size - 1 ] )
+logf( "i32 vals: %f %f %f ... %f %f %f\n", dest_buf_f32[ 0 ], dest_buf_f32[ 1 ], dest_buf_f32[ 2 ], dest_buf_f32[ dest_buf_size - 3 ], dest_buf_f32[ dest_buf_size - 2 ], dest_buf_f32[ dest_buf_size - 1 ] )
+
+res_str = ""
+sprintf( res_str, "%d x wavetable tests:\n(duration in seconds)\ni16: %f; i32: %f; f32: %f;", cnt, duration1, duration2, duration3 )
+logf( res_str ) logf( "\n" )
+clear()
+for( x = 0; x < dest_buf_size; x + 1 )
+{
+    y = dest_buf_i32[ x ] / 32768 * ysize
+    dot( x - xsize/2, y, BLUE )
+}
+print( res_str )
+
+while 1
+{
+    while( get_event() ) { if EVT[ EVT_TYPE ] == EVT_QUIT { halt } }
+    frame()
+}

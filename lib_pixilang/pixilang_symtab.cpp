@@ -1,81 +1,58 @@
 /*
     pixilang_symtab.cpp
-    This file is part of the Pixilang programming language.
-    
-    [ MIT license ]
-
-    Copyright (c) 2006 - 2016, Alexander Zolotov <nightradio@gmail.com>
-    www.warmplace.ru
-    
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to 
-    deal in the Software without restriction, including without limitation the 
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is 
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in 
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
+    This file is part of the Pixilang.
+    Copyright (C) 2006 - 2025 Alexander Zolotov <nightradio@gmail.com>
+    WarmPlace.ru
 */
 
-//Modularity: 100%
-
-#include "core/core.h"
+#include "sundog.h"
 #include "pixilang.h"
 
-int pix_symtab_init( size_t size, pix_symtab* st )
+int pix_symtab_init( int size_level, pix_symtab* st )
 {
     int rv = 0;
-    
-    if( st == 0 ) return -1;
-    
-    st->size = size; //53, 97, 193, 389, 769, 1543, 3079, 6151, 12289, 24593, 49157, 98317, 196613, 393241, 786433, 1572869 ...
-    st->symtab = (pix_sym**)bmem_new( st->size * sizeof( pix_sym* ) );
-    bmem_zero( st->symtab );
-    
+
+    if( !st ) return -1;
+
+    if( (unsigned)size_level >= (unsigned)SSYMTAB_TABSIZE_NUM )
+	st->size = size_level;
+    else
+	st->size = g_ssymtab_tabsize[ size_level ];
+    st->symtab = SMEM_ZALLOC2( pix_sym*, st->size );
+
     return rv;
 }
 
-int pix_symtab_hash( const utf8_char* name, size_t size ) //32bit version!
+int pix_symtab_hash( const char* name, int size ) //32bit version!
 {
-    uint h = 0;
-    uchar* p = (uchar*)name;
-    
+    uint32_t h = 0;
+    uint8_t* p = (uint8_t*)name;
+
     for( ; *p != 0; p++ )
 	h = 31 * h + *p;
-	
-    return (int)( h % (int)size );
+
+    return h % (unsigned)size;
 }
 
-pix_sym* pix_symtab_lookup( const utf8_char* name, int hash, bool create, pix_sym_type type, PIX_INT ival, PIX_FLOAT fval, bool* created, pix_symtab* st )
+pix_sym* pix_symtab_lookup( const char* name, int hash, bool create, pix_sym_type type, PIX_INT ival, PIX_FLOAT fval, bool* created, pix_symtab* st )
 {
     pix_sym* s;
-    
-    if( st == 0 ) return 0;
-    if( st->symtab == 0 ) return 0;
-    
+
+    if( !st ) return NULL;
+    if( !st->symtab ) return NULL;
+
     if( created ) *created = 0;
-    
+
     if( hash < 0 ) hash = pix_symtab_hash( name, st->size );
-    for( s = st->symtab[ hash ]; s != 0; s = s->next )
-	if( bmem_strcmp( name, s->name ) == 0 )
+    for( s = st->symtab[ hash ]; s != NULL; s = s->next )
+	if( smem_strcmp( name, s->name ) == 0 )
 	    return s;
-	    
+
     if( create )
     {
 	//Create new symbol:
-	s = (pix_sym*)bmem_new( sizeof( pix_sym ) );
-	size_t slen = bmem_strlen( name ) + 1;
-	s->name = (utf8_char*)bmem_new( slen );
-	bmem_copy( s->name, name, slen );
+	s = SMEM_ALLOC2( pix_sym, 1 );
+	s->name = SMEM_STRDUP( name );
 	s->type = type;
 	if( type == SYMTYPE_NUM_F )
 	    s->val.f = fval;
@@ -85,18 +62,16 @@ pix_sym* pix_symtab_lookup( const utf8_char* name, int hash, bool create, pix_sy
 	st->symtab[ hash ] = s;
 	if( created ) *created = 1;
     }
-    
+
     return s;
 }
 
 pix_sym* pix_sym_clone( pix_sym* s )
 {
-    if( s == 0 ) return 0;
-    pix_sym* s2 = (pix_sym*)bmem_new( sizeof( pix_sym ) );
-    bmem_copy( s2, s, sizeof( pix_sym ) );
-    size_t slen = bmem_get_size( s->name );
-    s2->name = (utf8_char*)bmem_new( slen );
-    bmem_copy( s2->name, s->name, slen );
+    if( !s ) return NULL;
+    pix_sym* s2 = SMEM_ALLOC2( pix_sym, 1 );
+    smem_copy( s2, s, sizeof( pix_sym ) );
+    s2->name = SMEM_STRDUP( s->name );
     if( s->next )
     {
 	s2->next = pix_sym_clone( s->next );
@@ -106,12 +81,12 @@ pix_sym* pix_sym_clone( pix_sym* s )
 
 int pix_symtab_clone( pix_symtab* dest_st, pix_symtab* src_st )
 {
-    if( dest_st == 0 ) return -1;
-    if( src_st == 0 ) return -1;
-    
+    if( !dest_st ) return -1;
+    if( !src_st ) return -1;
+
     if( pix_symtab_init( src_st->size, dest_st ) ) return -1;
-    
-    for( size_t i = 0; i < src_st->size; i++ )
+
+    for( int i = 0; i < src_st->size; i++ )
     {
 	pix_sym* s = src_st->symtab[ i ];
 	if( s )
@@ -119,30 +94,30 @@ int pix_symtab_clone( pix_symtab* dest_st, pix_symtab* src_st )
 	    dest_st->symtab[ i ] = pix_sym_clone( s );
 	}
     }
-    
+
     return 0;
 }
 
 pix_sym* pix_symtab_get_list( pix_symtab* st )
 {
-    pix_sym* rv = 0;
+    pix_sym* rv = NULL;
     size_t size = 0;
-    if( st == 0 ) return 0;
-    if( st->symtab == 0 ) return 0;
+    if( !st ) return NULL;
+    if( !st->symtab ) return NULL;
 
-    for( size_t i = 0; i < st->size; i++ )
+    for( int i = 0; i < st->size; i++ )
     {
 	pix_sym* s = st->symtab[ i ];
 	while( s )
 	{
-	    if( s->name )
+	    if( s->name && s->type != SYMTYPE_DELETED )
 	    {
 		if( size == 0 )
-		    rv = (pix_sym*)bmem_new( sizeof( pix_sym ) * 8 );
+		    rv = SMEM_ALLOC2( pix_sym, 8 );
 		else
 		{
-		    if( size >= bmem_get_size( rv ) / sizeof( pix_sym ) )
-			rv = (pix_sym*)bmem_resize( rv, ( size + 8 ) * sizeof( pix_sym ) );
+		    if( size >= smem_get_size( rv ) / sizeof( pix_sym ) )
+			rv = SMEM_RESIZE2( rv, pix_sym, size + 8 );
 		}
 		rv[ size ].name = s->name;
 		rv[ size ].type = s->type;
@@ -152,36 +127,35 @@ pix_sym* pix_symtab_get_list( pix_symtab* st )
 	    s = s->next;
 	}
     }
-    
+
     if( size > 0 )
     {
-	rv = (pix_sym*)bmem_resize( rv, size * sizeof( pix_sym ) );
+	rv = SMEM_RESIZE2( rv, pix_sym, size );
     }
-    
+
     return rv;
 }
 
 int pix_symtab_deinit( pix_symtab* st )
 {
     int rv = 0;
-    
-    if( st == 0 ) return -1;
-    if( st->symtab == 0 ) return -1;
-    
-    for( size_t i = 0; i < st->size; i++ )
+
+    if( !st ) return -1;
+    if( !st->symtab ) return -1;
+
+    for( int i = 0; i < st->size; i++ )
     {
 	pix_sym* s = st->symtab[ i ];
 	while( s )
 	{
 	    pix_sym* next = s->next;
-	    bmem_free( s->name );
-	    bmem_free( s );
+	    smem_free( s->name );
+	    smem_free( s );
 	    s = next;
 	}
     }
-    bmem_free( st->symtab );
-    st->symtab = 0;
-    
+    smem_free( st->symtab );
+    st->symtab = NULL;
+
     return rv;
 }
-

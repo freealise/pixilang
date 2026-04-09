@@ -1,34 +1,11 @@
 /*
     pixilang_vm_gfx_triangle.cpp
-    This file is part of the Pixilang programming language.
-    
-    [ MIT license ]
-
-    Copyright (c) 2006 - 2016, Alexander Zolotov <nightradio@gmail.com>
-    www.warmplace.ru
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to 
-    deal in the Software without restriction, including without limitation the 
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is 
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in 
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
+    This file is part of the Pixilang.
+    Copyright (C) 2006 - 2025 Alexander Zolotov <nightradio@gmail.com>
+    WarmPlace.ru
 */
 
-//Modularity: 100%
-
-#include "core/core.h"
+#include "sundog.h"
 #include "pixilang.h"
 
 //y - int
@@ -55,7 +32,7 @@ inline static void pix_vm_gfx_draw_hline( int y, PIX_INT x1, PIX_INT x2, COLOR c
     //Draw:
     COLORPTR ptr = vm->screen_ptr + y * vm->screen_xsize + x1;
     COLORPTR ptr2;
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     if( transp == 255 )
     {
 	ptr2 = ptr + ( x2 - x1 );
@@ -104,7 +81,7 @@ inline static void pix_vm_gfx_draw_hline_zbuf( int y, PIX_INT x1, PIX_INT z1, PI
     //Draw:
     size = x2 - x1;
     int scr_off = y * vm->screen_xsize + x1;
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     if( transp == 255 )
     {
 	while( size-- )
@@ -184,14 +161,14 @@ inline static void pix_vm_gfx_draw_hline_zbuf( int y, PIX_INT x1, PIX_INT z1, PI
     if( ty < 0 ) ty = 0; \
     if( ty >= txt_ysize ) ty = txt_ysize - 1; \
     tx = txt_xsize * ty + tx; \
-    uchar pixel_alpha = txt_alpha[ tx ]; \
+    uint8_t pixel_alpha = txt_alpha[ tx ]; \
     COLOR pixel; \
     if( pixel_alpha ) pixel = txt[ tx ];
 
 #define GET_TEXTURE_PIXEL_WITH_ALPHA_INTERP \
     COLOR p1, p2, p3, p4; \
     COLOR pixel, pixel2; \
-    uchar a1, a2, a3, a4; \
+    uint8_t a1, a2, a3, a4; \
     int ttx, tty, toff; \
     int tx = tx1 >> PIX_TEX_FIXED_MATH_PREC; \
     int ty = ty1 >> PIX_TEX_FIXED_MATH_PREC; \
@@ -209,9 +186,9 @@ inline static void pix_vm_gfx_draw_hline_zbuf( int y, PIX_INT x1, PIX_INT z1, PI
     toff = txt_xsize * tty + ttx; p2 = txt[ toff ]; a2 = txt_alpha[ toff ]; \
     int xc = ( tx1 >> ( PIX_TEX_FIXED_MATH_PREC - 8 ) ) & 255; \
     int yc = ( ty1 >> ( PIX_TEX_FIXED_MATH_PREC - 8 ) ) & 255; \
-    uchar pixel_alpha = (uchar)( (int)( (int)a1 * ( 255 - xc ) + (int)a2 * xc ) >> 8 ); \
-    uchar pixel_alpha2 = (uchar)( (int)( (int)a3 * ( 255 - xc ) + (int)a4 * xc ) >> 8 ); \
-    pixel_alpha = (uchar)( (int)( (int)pixel_alpha * ( 255 - yc ) + (int)pixel_alpha2 * yc ) >> 8 ); \
+    uint8_t pixel_alpha = (uint8_t)( (int)( (int)a1 * ( 255 - xc ) + (int)a2 * xc ) >> 8 ); \
+    uint8_t pixel_alpha2 = (uint8_t)( (int)( (int)a3 * ( 255 - xc ) + (int)a4 * xc ) >> 8 ); \
+    pixel_alpha = (uint8_t)( (int)( (int)pixel_alpha * ( 255 - yc ) + (int)pixel_alpha2 * yc ) >> 8 ); \
     if( pixel_alpha ) \
     { \
 	pixel = blend( p1, p2, xc ); \
@@ -244,7 +221,7 @@ inline static void pix_vm_gfx_draw_hline_t(
     COLORPTR txt,
     int txt_xsize,
     int txt_ysize,
-    uchar* txt_alpha,
+    uint8_t* txt_alpha,
     bool uses_key,
     COLOR key,
     COLORPTR scr, 
@@ -292,7 +269,7 @@ inline static void pix_vm_gfx_draw_hline_t(
     //Draw:
     size = x2 - x1;
     int scr_off = y * vm->screen_xsize + x1;
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     if( txt_alpha )
     {
 	//With alpha-channel:
@@ -346,7 +323,7 @@ inline static void pix_vm_gfx_draw_hline_t(
 			if( pixel_alpha && !( uses_key && key == pixel ) )
 			{
 			    COLORIZE;
-			    pixel_alpha = (uchar)( (int)pixel_alpha * (int)transp / 256 );
+			    pixel_alpha = (uint8_t)( (int)pixel_alpha * (int)transp / 256 );
 			    scr[ scr_off ] = blend( scr[ scr_off ], pixel, pixel_alpha );
 			    zbuf[ scr_off ] = z1;
 			}
@@ -363,7 +340,7 @@ inline static void pix_vm_gfx_draw_hline_t(
 		    if( pixel_alpha && !( uses_key && key == pixel ) )
 		    {
 			COLORIZE;
-			pixel_alpha = (uchar)( (int)pixel_alpha * (int)transp / 256 );
+			pixel_alpha = (uint8_t)( (int)pixel_alpha * (int)transp / 256 );
 			scr[ scr_off ] = blend( scr[ scr_off ], pixel, pixel_alpha );
 		    }
 		    ADD_WITHOUT_ZBUF;
@@ -465,7 +442,7 @@ inline static void pix_vm_gfx_draw_hline_t_interp(
     COLORPTR txt,
     int txt_xsize,
     int txt_ysize,
-    uchar* txt_alpha,
+    uint8_t* txt_alpha,
     bool uses_key,
     COLOR key,
     COLORPTR scr, 
@@ -518,7 +495,7 @@ inline static void pix_vm_gfx_draw_hline_t_interp(
     //Draw:
     size = x2 - x1;
     int scr_off = y * vm->screen_xsize + x1;
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     if( txt_alpha )
     {
 	//With alpha-channel:
@@ -572,7 +549,7 @@ inline static void pix_vm_gfx_draw_hline_t_interp(
 			if( pixel_alpha && !( uses_key && key == pixel ) )
 			{
 			    COLORIZE;
-			    pixel_alpha = (uchar)( (int)pixel_alpha * (int)transp / 256 );
+			    pixel_alpha = (uint8_t)( (int)pixel_alpha * (int)transp / 256 );
 			    scr[ scr_off ] = blend( scr[ scr_off ], pixel, pixel_alpha );
 			    zbuf[ scr_off ] = z1;
 			}
@@ -589,7 +566,7 @@ inline static void pix_vm_gfx_draw_hline_t_interp(
 		    if( pixel_alpha && !( uses_key && key == pixel ) )
 		    {
 			COLORIZE;
-			pixel_alpha = (uchar)( (int)pixel_alpha * (int)transp / 256 );
+			pixel_alpha = (uint8_t)( (int)pixel_alpha * (int)transp / 256 );
 			scr[ scr_off ] = blend( scr[ scr_off ], pixel, pixel_alpha );
 		    }
 		    ADD_WITHOUT_ZBUF;
@@ -959,7 +936,7 @@ void pix_vm_gfx_draw_triangle_t( PIX_FLOAT* v1f, PIX_FLOAT* v2f, PIX_FLOAT* v3f,
     int txt_ysize = c->ysize;
     
     //Get alpha-channel:
-    uchar* txt_alpha = (uchar*)pix_vm_get_container_alpha_data( cnum, vm );
+    uint8_t* txt_alpha = (uint8_t*)pix_vm_get_container_alpha_data( cnum, vm );
     
     //Get key color:
     bool uses_key = 0;

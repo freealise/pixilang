@@ -1,0 +1,53 @@
+//Methods for obtaining arguments of a function with a variable number of parameters
+
+//Function myfn($x,$y,$z) parameters = the variable names: $x, $y, $z etc.
+//Function arguments = the actual data that needs to be written to the parameter and then read back
+
+include "show_log.pixi"
+
+fn myfn( $x, $y, $z )
+{
+    logf( "Number of parameters: %d\n", $0 )
+
+    //METHOD 1
+    if $0 >= 1
+    {
+	logf( "Arg0 = %d\n", $x )
+    }
+    if $0 >= 2
+    {
+	logf( "Arg1 = %d\n", $y )
+    }
+    if $0 >= 3
+    {
+	logf( "Arg2 = %d\n", $z )
+    }
+
+    //METHOD 2
+    if $0 >= 1
+    {
+	logf( "Arg0 = %d\n", $1 )
+    }
+    if $0 >= 2
+    {
+	logf( "Arg1 = %d\n", $2 )
+    }
+    if $0 >= 3
+    {
+	logf( "Arg2 = %d\n", $3 )
+    }
+
+    //METHOD 3
+    for( $p = 0; $p < $0; $p + 1 )
+    {
+	$v = $[ $p ] //read an argument at index $p
+	logf( "Arg%d = %d\n", $p, $v )
+    }
+}
+
+myfn()
+myfn( 11 )
+myfn( 11, 22 )
+myfn( 11, 22, 33 )
+
+show_log()

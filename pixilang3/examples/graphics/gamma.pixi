@@ -1,0 +1,86 @@
+srgb_gamma = 2.2
+scr = get_screen()
+xsize = get_xsize(scr)
+ysize = get_ysize(scr)
+hxsize = xsize div 2
+hysize = ysize div 2
+hysize2 = ysize div 4
+hysize4 = ysize div 8
+resize( scr, xsize, ysize )
+
+//non-linear sRGB <-> linear:
+//sRGB is not a simple x^2.2 curve. It is linear at small value, then x^2.4 at larger value, resulting an average of 2.2 gamma
+fn linear_to_sRGB( $v )
+{
+    if $v <= 0.0031308 { ret( $v * 12.92 ) }
+    ret( pow( $v, 1 / 2.4 ) * 1.055 - 0.055 )
+}
+fn sRGB_to_linear( $v )
+{
+    if $v <= 0.04045 { ret( $v / 12.92 ) }
+    ret( pow( ( $v + 0.055 ) / 1.055, 2.4 ) )
+}
+
+for( x = 0; x < xsize; x + 1 )
+{
+    xx = x - hxsize
+    c = x * 255 / xsize
+    fbox( xx, -hysize, 1, ysize, get_color(c,c,c) )
+}
+
+for( y = -hysize + hysize2; y < -hysize + hysize2 * 2; y + 1 )
+{
+    c = WHITE
+    if y & 1 { c = BLACK }
+    fbox( -hxsize, y, xsize, 1, c )
+}
+
+for( x = 0; x < xsize; x + 1 )
+{
+    xx = x - hxsize
+    c = x / xsize
+    c = linear_to_sRGB( c )
+    c = c * 256
+    fbox( xx, -hysize + hysize2*2, 1, hysize2, get_color(c,c,c) )
+}
+
+x = -hxsize
+y = hysize - hysize4
+fbox( x, y, xsize / 3, hysize4, RED ) x + xsize / 3
+fbox( x, y, xsize / 3, hysize4, GREEN ) x + xsize / 3
+fbox( x, y, xsize / 3, hysize4, BLUE ) x + xsize / 3
+
+t_scale(2,2,2)
+
+for( x = 0; x < 256; x + 32 )
+{
+    xx = ( -hxsize + ( x * xsize / 256 ) ) / 2
+    yy = -hysize / 2
+    fbox( xx, yy, 1, 14, BLACK )
+    ts = "" sprintf( ts, "%d\n%.02f", x, x/256 )
+    print( ts, xx, yy + 16 + 10, BLACK )
+}
+print( "Linear gradient in memory, nonlinear (darker) on screen (sRGB):", (-hxsize)/2+4, (-hysize)/2+4, WHITE, TOP | LEFT )
+
+print( "True physically correct 50% brightness:", (-hxsize)/2+4, (-hysize+hysize2)/2+4, BLACK, TOP | LEFT )
+
+for( x = 0; x < 256; x + 32 )
+{
+    xx = ( -hxsize + ( x * xsize / 256 ) ) / 2
+    yy = (-hysize+hysize2*2) / 2
+    fbox( xx, yy, 1, 14, BLACK )
+    c = x / 256
+    c = linear_to_sRGB( c )
+    c = c * 256
+    ts = "" sprintf( ts, "%d\n%.02f", c, c/256 )
+    print( ts, xx, yy + 16 + 10, BLACK )
+}
+print( "Physically correct linear gradient on screen, non-linear in memory:", (-hxsize)/2+4, (-hysize+hysize2*2)/2+4, WHITE, TOP | LEFT )
+
+//save( scr, "GAMMA.jpg", FORMAT_JPEG )
+
+while 1
+{
+    while get_event() { if EVT[ EVT_TYPE ] == EVT_QUIT { halt } }
+    frame()
+}

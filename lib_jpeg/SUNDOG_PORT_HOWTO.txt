@@ -1,0 +1,82 @@
+1. Download jpeg-compressor: https://github.com/richgel999/jpeg-compressor
+The latest version this port is based on is from March 25, 2020
+
+OPTIONAL STEPS: ===========
+
+2. Convert Windows line endings (CR+LF) and tabs (4 spaces) to Unix (LF + 8 spaces):
+dos2unix *.cpp
+dos2unix *.h
+expand -t 4 -i jpgd.cpp > jpgd.cpp_
+expand -t 4 -i jpgd.h > jpgd.h_
+expand -t 4 -i jpge.cpp > jpge.cpp_
+expand -t 4 -i jpge.h > jpge.h_
+expand -t 4 -i jpgd_idct.h > jpgd_idct.h_
+unexpand jpgd.cpp_ > jpgd.cpp
+unexpand jpgd.h_ > jpgd.h
+unexpand jpge.cpp_ > jpge.cpp
+unexpand jpge.h_ > jpge.h
+unexpand jpgd_idct.h_ > jpgd_idct.h
+
+===========================
+
+3. Add to the beginning of each cpp file:
+#include "sundog.h"
+
+4. Add to each base class:
+: public smem_base
+
+5. Replace jpgd_malloc()/jpge_malloc() with SMEM_ALLOC()
+and jpgd_free()/jpge_free() with smem_free()
+
+6. add to jpge.h
+struct params {
+...
+#ifndef SUNDOG_VER
+		bool m_sundog_color; //use SunDog1 WM color format for the source
+#endif
+
+7. add to jpge.cpp
+#ifndef SUNDOG_VER
+	//default pixel format for SunDog1 window manager:
+	static void sundog_color_to_YCC(uint8* pDst, const uint8* pSrc, int num_pixels)
+	{
+		const COLORPTR c = (const COLORPTR)pSrc;
+		for (; num_pixels; pDst += 3, c++, num_pixels--)
+		{
+			const int r = red( c[ 0 ] );
+    			const int g = green( c[ 0 ] );
+    			const int b = blue( c[ 0 ] );
+			pDst[0] = static_cast<uint8>((r * YR + g * YG + b * YB + 32768) >> 16);
+			pDst[1] = clamp(128 + ((r * CB_R + g * CB_G + b * CB_B + 32768) >> 16));
+			pDst[2] = clamp(128 + ((r * CR_R + g * CR_G + b * CR_B + 32768) >> 16));
+		}
+	}
+	static void sundog_color_to_Y(uint8* pDst, const uint8* pSrc, int num_pixels)
+	{
+		const COLORPTR c = (const COLORPTR)pSrc;
+		for (; num_pixels; pDst++, c++, num_pixels--)
+		{
+			const int r = red( c[ 0 ] );
+    			const int g = green( c[ 0 ] );
+    			const int b = blue( c[ 0 ] );
+			pDst[0] = static_cast<uint8>((r * YR + g * YG + b * YB + 32768) >> 16);
+		}
+	}
+#endif
+
+8. add to jpge.cpp : load_mcu()
+...
+		if (m_num_components == 1)
+		{
+#ifndef SUNDOG_VER
+			if( get_params().m_sundog_color )
+				sundog_color_to_Y(pDst, Psrc, m_image_x);
+			else
+#endif
+...
+#ifndef SUNDOG_VER
+			if( get_params().m_sundog_color )
+				sundog_color_to_YCC(pDst, Psrc, m_image_x);
+			else
+#endif
+...

@@ -11,9 +11,7 @@
  * 26 Jun 96 - Version 3.0 by Eric S. Raymond (Full GIF89 support)
  *****************************************************************************/
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
-#endif
+#include "config.h"
 
 /* Find a thirty-two bit int type */
 #ifdef HAVE_SYS_TYPES_H

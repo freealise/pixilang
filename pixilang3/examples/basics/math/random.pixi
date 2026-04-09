@@ -1,0 +1,60 @@
+//Sample and fast random number generator
+
+logf( 
+"rand_seed(), rand()
+Simple and fast linear congruential generator:
+https://en.wikipedia.org/wiki/Linear_congruential_generator
+period = 1<<31;
+" )
+rand_seed( 123 ) //set random seed from 0 to 0x7FFFFFFF
+logf( "SEED = 123\n" )
+for( i = 0; i < 8; i + 1 )
+{
+    v = rand() //get a random number from 0 to 32767
+    logf( "%d: %d\n", i, v )
+}
+//If the SEED is the same, then we get the same sequence of numbers:
+rand_seed( 123 )
+logf( "SEED = 123\n" )
+for( i = 0; i < 8; i + 1 )
+{
+    v = rand()
+    logf( "%d: %d\n", i, v )
+}
+//If the SEED is different, then the sequence of numbers will be different too:
+rand_seed( 29837 )
+logf( "SEED = 29837\n" )
+for( i = 0; i < 8; i + 1 )
+{
+    v = rand()
+    logf( "%d: %d\n", i, v )
+}
+
+//Fill the screen with randomly colored pixels
+
+scr = get_screen()
+resize( scr, 512, 512 )
+size = get_size( scr )
+size2 = size div 2
+rand_seed( 11111 )
+for( i = 0; i < size; i + 1 )
+{
+    v = rand()
+    if i < size2
+    {
+	v = v & 255
+	color = get_color( v, v, v )
+    }
+    else
+    {
+	color = BLACK
+	if v & 1 { color = WHITE }
+    }
+    scr[ i ] = color
+}
+
+while 1
+{
+    while get_event() { if EVT[ EVT_TYPE ] == EVT_QUIT { halt } }
+    frame()
+}

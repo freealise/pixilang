@@ -1,68 +1,46 @@
 /*
     pixilang_utils.cpp
-    This file is part of the Pixilang programming language.
-
-    [ MIT license ]
-
-    Copyright (c) 2006 - 2016, Alexander Zolotov <nightradio@gmail.com>
-    www.warmplace.ru
-    
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to 
-    deal in the Software without restriction, including without limitation the 
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is 
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in 
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
+    This file is part of the Pixilang.
+    Copyright (C) 2006 - 2025 Alexander Zolotov <nightradio@gmail.com>
+    WarmPlace.ru
 */
 
-//Modularity: 100%
-
-#include "core/core.h"
+#include "sundog.h"
 #include "pixilang.h"
 
-utf8_char* pix_get_base_path( const utf8_char* src_name )
+char* pix_get_base_path( const char* src_name )
 {
     int i;
-    for( i = (int)bmem_strlen( src_name ) - 1; i >= 0; i-- )
+    for( i = (int)smem_strlen( src_name ) - 1; i >= 0; i-- )
     {
 	if( src_name[ i ] == '/' ) break;
     }
     if( i <= 0 )
     {
-	utf8_char* rv = (utf8_char*)bmem_new( 1 * sizeof( utf8_char ) );
+	char* rv = SMEM_ALLOC2( char, 1 );
 	rv[ 0 ] = 0;
 	return rv;
     }
-    else 
+    else
     {
-	utf8_char* rv = (utf8_char*)bmem_new( ( i + 2 ) * sizeof( utf8_char ) );
-	bmem_copy( rv, src_name, ( i + 1 ) * sizeof( utf8_char ) );
+	char* rv = SMEM_ALLOC2( char, i + 2 );
+	smem_copy( rv, src_name, ( i + 1 ) * sizeof( char ) );
 	rv[ i + 1 ] = 0;
 	return rv;
     }
 }
 
-utf8_char* pix_compose_full_path( utf8_char* base_path, utf8_char* file_name, pix_vm* vm )
+char* pix_compose_full_path( char* base_path, char* file_name, pix_vm* vm )
 {
-    utf8_char* new_name;
-    int name_len = (int)bmem_strlen( file_name );
+    if( !file_name ) return NULL;
+    char* new_name = NULL;
+    int name_len = (int)smem_strlen( file_name );
     if( vm && vm->virt_disk0 && name_len > 3 )
     {
 	if( file_name[ 0 ] == '0' && file_name[ 1 ] == ':' && file_name[ 2 ] == '/' )
 	{
 	    //Virtual disk0:
-	    new_name = (utf8_char*)bmem_new( name_len + 16 );
+	    new_name = SMEM_ALLOC2( char, name_len + 16 );
 	    sprintf( new_name, "vfs%d:/%s", vm->virt_disk0, file_name + 3 );
 	    return new_name;
 	}
@@ -71,27 +49,109 @@ utf8_char* pix_compose_full_path( utf8_char* base_path, utf8_char* file_name, pi
         ( name_len > 2 && file_name[ 1 ] == ':' ) )
     {
 	//File name with absolute path:
-	new_name = (utf8_char*)bmem_new( name_len + 1 );
-	bmem_copy( new_name, file_name, name_len + 1 );
+	new_name = SMEM_STRDUP( file_name );
     }
     else 
     {
 	if( base_path == 0 || base_path[ 0 ] == 0 )
 	{
 	    //Base path is empty:
-	    new_name = (utf8_char*)bmem_new( name_len + 1 );
-	    bmem_copy( new_name, file_name, name_len + 1 );
+	    new_name = SMEM_STRDUP( file_name );
 	}
 	else 
 	{
-	    size_t len = bmem_strlen( base_path );
-	    new_name = (utf8_char*)bmem_new( len + 1 + name_len + 1 );
+	    //Base path + file name:
+	    size_t len = smem_strlen( base_path );
+	    new_name = SMEM_ALLOC2( char, len + 1 + name_len + 1 );
 	    new_name[ 0 ] = 0;
-	    bmem_strcat_resize( new_name, base_path );
+	    SMEM_STRCAT_D( new_name, base_path );
 	    if( base_path[ len - 1 ] != '/' )
-		bmem_strcat_resize( new_name, "/" );
-	    bmem_strcat_resize( new_name, file_name );
+		SMEM_STRCAT_D( new_name, "/" );
+	    SMEM_STRCAT_D( new_name, file_name );
 	}
     }
     return new_name;
+}
+
+void pix_str_to_num( const char* str, int str_len, PIX_VAL* v, int8_t* t, pix_vm* vm )
+{
+    PIX_VAL rv;
+    int8_t rv_t = 0;
+    rv.i = 0;
+    while( 1 )
+    {
+	if( !str || str_len < 1 ) break;
+	bool neg = 0;
+	if( str[ 0 ] == '-' ) { neg = 1; str++; str_len--; }
+        if( str_len < 1 ) break;
+        if( str[ 0 ] == '#' )
+	{
+    	    //HEX COLOR:
+    	    for( int i = 1; i < str_len; i++ )
+    	    {
+    		rv.i <<= 4;
+        	if( str[ i ] < 58 ) rv.i += str[ i ] - '0';
+        	else if( str[ i ] > 64 && str[ i ] < 91 ) rv.i += str[ i ] - 'A' + 10;
+        	else rv.i += str[ i ] - 'a' + 10;
+    	    }
+    	    rv.i = get_color( ( rv.i >> 16 ) & 255, ( rv.i >> 8 ) & 255, rv.i & 255 );
+	}
+	else
+	{
+    	    if( str_len > 2 && str[ 1 ] == 'x' )
+    	    {
+        	//HEX:
+        	for( int i = 2; i < str_len; i++ )
+        	{
+            	    rv.i <<= 4;
+            	    if( str[ i ] < 58 ) rv.i += str[ i ] - '0';
+            	    else if( str[ i ] > 64 && str[ i ] < 91 ) rv.i += str[ i ] - 'A' + 10;
+            	    else rv.i += str[ i ] - 'a' + 10;
+        	}
+    	    }
+    	    else if( str_len > 2 && str[ 1 ] == 'b' )
+    	    {
+        	//BIN:
+        	for( int i = 2; i < str_len; i++ )
+        	{
+        	    rv.i <<= 1;
+            	    rv.i += str[ i ] - '0';
+        	}
+    	    }
+    	    else
+    	    {
+        	bool float_num = false;
+        	for( int i = 0; i < str_len; i++ ) if( str[ i ] == '.' ) { float_num = true; break; }
+        	if( float_num )
+        	{
+            	    //FLOATING POINT:
+            	    if( str_len > 128 ) str_len = 128;
+            	    char ts[ 128 + 1 ];
+            	    smem_copy( ts, str, str_len );
+            	    ts[ str_len ] = 0;
+            	    rv_t = 1;
+            	    rv.f = atof( ts );
+        	}
+        	else
+        	{
+            	    //DEC:
+            	    for( int i = 0; i < str_len; i++ )
+            	    {
+                	rv.i *= 10;
+                	rv.i += str[ i ] - '0';
+            	    }
+        	}
+    	    }
+	}
+	if( neg )
+	{
+	    if( rv_t )
+		rv.f = -rv.f;
+	    else
+		rv.i = -rv.i;
+	}
+	break;
+    }
+    *v = rv;
+    *t = rv_t;
 }

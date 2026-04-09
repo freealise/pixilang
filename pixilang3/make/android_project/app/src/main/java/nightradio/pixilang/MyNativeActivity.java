@@ -1,6 +1,7 @@
 package nightradio.pixilang;
 
 import android.app.NativeActivity;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -26,6 +27,16 @@ public class MyNativeActivity extends NativeActivity
     {
         super.onCreate( savedInstanceState );
     }
+    @Override
+    protected void onNewIntent( Intent intent ) { super.onNewIntent( intent ); if( lib != null ) lib.SetNewIntent( intent ); }
+    @Override
+    public void onRequestPermissionsResult( int requestCode, String[] permissions, int[] grantResults ) { if( lib != null ) lib.onRequestPermissionsResult( requestCode, permissions, grantResults ); }
+    /*@Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        Log.i("onActivityResult: ", "code="+requestCode );
+        super.onActivityResult(requestCode, resultCode, data);
+    }*/
 
     public int CopyResources()
     {

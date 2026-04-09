@@ -1,0 +1,79 @@
+//Not the fastest, but better quality (compared to rand()) random number generator
+
+rnd = xoshiro256_new() //create a new generator
+//rnd is a container of type INT32
+//rnd[0] = last random value: the least significant 32-bit word of a 64-bit value
+//rnd[1] = last random value: the most significant 32-bit word of a 64-bit value
+//rnd[2...9] = generator state
+//If you no longer need the generator, simply delete it using remove(rnd)
+
+logf( 
+"xoshiro256_new(), xoshiro256_seed(), xoshiro256_next()
+xoshiro256** by David Blackman and Sebastiano Vigna (vigna@acm.org)
+(improved version of the Xorshift algorithm)
+https://prng.di.unimi.it
+period = (1<<256)-1
+" )
+xoshiro256_seed( rnd, 123, 0 ) //set a 64-bit seed via two 32-bit parameters (low and high word)
+logf( "SEED = 123\n" )
+for( i = 0; i < 8; i + 1 )
+{
+    xoshiro256_next( rnd ) //get a 64-bit random number
+    //rnd[0] = last random value: the least significant 32-bit word of a 64-bit value
+    //rnd[1] = last random value: the most significant 32-bit word of a 64-bit value
+    v1 = rnd[0]
+    v2 = rnd[1]
+    logf( "%d: %x %x\n", i, v1, v2 )
+}
+//If the SEED is the same, then we get the same sequence of numbers:
+xoshiro256_seed( rnd, 123, 0 )
+logf( "SEED = 123\n" )
+for( i = 0; i < 8; i + 1 )
+{
+    xoshiro256_next( rnd )
+    v1 = rnd[0]
+    v2 = rnd[1]
+    logf( "%d: %x %x\n", i, v1, v2 )
+}
+//If the SEED is different, then the sequence of numbers will be different too:
+xoshiro256_seed( rnd, 29837, 0 )
+logf( "SEED = 29837\n" )
+for( i = 0; i < 8; i + 1 )
+{
+    xoshiro256_next( rnd )
+    v1 = rnd[0]
+    v2 = rnd[1]
+    logf( "%d: %x %x\n", i, v1, v2 )
+}
+
+//Fill the screen with randomly colored pixels
+
+scr = get_screen()
+resize( scr, 512, 512 )
+size = get_size( scr )
+size2 = size div 2
+xoshiro256_seed( rnd, 11111 )
+for( i = 0; i < size; i + 1 )
+{
+    xoshiro256_next( rnd )
+    v = rnd[0]
+    if i < size2
+    {
+	v = v & 255
+	color = get_color( v, v, v )
+    }
+    else
+    {
+	color = BLACK
+	if v & 1 { color = WHITE }
+    }
+    scr[ i ] = color
+}
+
+remove( rnd ) //delete the random generator
+
+while 1
+{
+    while get_event() { if EVT[ EVT_TYPE ] == EVT_QUIT { halt } }
+    frame()
+}

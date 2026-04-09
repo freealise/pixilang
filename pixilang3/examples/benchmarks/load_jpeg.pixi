@@ -1,0 +1,31 @@
+set_pixel_size( WINDOW_XSIZE / 480 )
+resize( get_screen(), WINDOW_XSIZE, WINDOW_YSIZE )
+scr = get_screen()
+xsize = get_xsize( scr )
+ysize = get_ysize( scr )
+
+clear()
+print( "JPEG LOAD TESTING..." )
+frame()
+
+t1 = get_ticks()
+cnt = 200
+for( i = 0; i < cnt; i + 1 )
+{
+    printf( "%d\n", i )
+    img = load( "../graphics/images/test2.jpg" )
+    remove( img )
+}
+t2 = get_ticks()
+duration = (t2-t1)/get_tps()
+res_str = ""
+sprintf( res_str, "Loading time for %d images = %f seconds", cnt, duration )
+logf( res_str ) logf( "\n" )
+clear()
+print( res_str )
+
+while 1
+{
+    while( get_event() ) { if EVT[ EVT_TYPE ] == EVT_QUIT { halt } }
+    frame()
+}

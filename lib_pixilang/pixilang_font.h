@@ -2,7 +2,7 @@ int g_font8x8_xsize = 128;
 int g_font8x8_ysize = 48;
 int g_font8x8_xchars = 16;
 int g_font8x8_ychars = 6;
-unsigned char g_font8x8[] = {
+uint8_t g_font8x8[] = {
 0,
 24,
 108,

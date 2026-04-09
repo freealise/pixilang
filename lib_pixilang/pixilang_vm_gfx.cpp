@@ -1,34 +1,11 @@
 /*
     pixilang_vm_gfx.cpp
-    This file is part of the Pixilang programming language.
-    
-    [ MIT license ]
-
-    Copyright (c) 2006 - 2016, Alexander Zolotov <nightradio@gmail.com>
-    www.warmplace.ru
-
-    Permission is hereby granted, free of charge, to any person obtaining a copy
-    of this software and associated documentation files (the "Software"), to 
-    deal in the Software without restriction, including without limitation the 
-    rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
-    sell copies of the Software, and to permit persons to whom the Software is 
-    furnished to do so, subject to the following conditions:
-
-    The above copyright notice and this permission notice shall be included in 
-    all copies or substantial portions of the Software.
-
-    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR 
-    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, 
-    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER 
-    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING 
-    FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
-    IN THE SOFTWARE.
+    This file is part of the Pixilang.
+    Copyright (C) 2006 - 2025 Alexander Zolotov <nightradio@gmail.com>
+    WarmPlace.ru
 */
 
-//Modularity: 100%
-
-#include "core/core.h"
+#include "sundog.h"
 #include "pixilang.h"
 
 void pix_vm_gfx_set_screen( PIX_CID cnum, pix_vm* vm )
@@ -65,7 +42,7 @@ void pix_vm_gfx_matrix_reset( pix_vm* vm )
 {
     vm->t_enabled = 0;
     PIX_FLOAT* m = vm->t_matrix + ( vm->t_matrix_sp * 16 );
-    bmem_set( m, sizeof( PIX_FLOAT ) * 4 * 4, 0 );
+    smem_clear( m, sizeof( PIX_FLOAT ) * 4 * 4 );
     m[ 0 ] = 1;
     m[ 4 + 1 ] = 1;
     m[ 8 + 2 ] = 1;
@@ -92,11 +69,11 @@ void pix_vm_gfx_matrix_mul( PIX_FLOAT* res, PIX_FLOAT* m1, PIX_FLOAT* m2 )
 void pix_vm_gfx_vertex_transform( PIX_FLOAT* v, PIX_FLOAT* m )
 {
     PIX_FLOAT rx, ry, rz, rw;
-    rx = 0; 
-    ry = 0; 
-    rz = 0, 
+    rx = 0;
+    ry = 0;
+    rz = 0;
     rw = 0;
-    
+
     if( m[ 0 ] ) rx += v[ 0 ] * m[ 0 ];
     if( m[ 4 ] ) rx += v[ 1 ] * m[ 4 ];
     if( m[ 8 ] ) rx += v[ 2 ] * m[ 8 ];
@@ -113,7 +90,9 @@ void pix_vm_gfx_vertex_transform( PIX_FLOAT* v, PIX_FLOAT* m )
     if( m[ 4 + 3 ] ) rw += v[ 1 ] * m[ 4 + 3 ];
     if( m[ 8 + 3 ] ) rw += v[ 2 ] * m[ 8 + 3 ];
     rw += m[ 12 + 3 ];
-    
+
+    //Perspective division (перспективное деление):
+    //(in OpenGL this step is performed automatically at the end of the vertex shader step)
     v[ 0 ] = rx / rw;
     v[ 1 ] = ry / rw;
     v[ 2 ] = rz / rw;
@@ -135,7 +114,7 @@ static int pix_vm_gfx_make_line_code( PIX_INT x, PIX_INT y, int clip_x, int clip
 
 void pix_vm_gfx_draw_line( PIX_INT x1, PIX_INT y1, PIX_INT x2, PIX_INT y2, COLOR color, pix_vm* vm )
 {
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     if( transp == 0 ) return;
 
     if( x1 == x2 )
@@ -353,9 +332,9 @@ void pix_vm_gfx_draw_line( PIX_INT x1, PIX_INT y1, PIX_INT x2, PIX_INT y2, COLOR
 //z1, z2 - fixed point PIX_FIXED_MATH_PREC
 void pix_vm_gfx_draw_line_zbuf( PIX_INT x1, PIX_INT y1, PIX_INT z1, PIX_INT x2, PIX_INT y2, PIX_INT z2, COLOR color, int* zbuf, pix_vm* vm )
 {
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     if( transp == 0 ) return;
-        
+
     //Cohen-Sutherland line clipping algorithm:
     int code0;
     int code1;
@@ -567,7 +546,7 @@ void pix_vm_gfx_draw_box( PIX_INT x, PIX_INT y, PIX_INT xsize, PIX_INT ysize, CO
 
 void pix_vm_gfx_draw_fbox( PIX_INT x, PIX_INT y, PIX_INT xsize, PIX_INT ysize, COLOR color, pix_vm* vm )
 {
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     if( transp == 0 ) return;
 
     if( x < 0 ) { xsize += x; x = 0; }
@@ -643,14 +622,14 @@ void pix_vm_gfx_draw_fbox( PIX_INT x, PIX_INT y, PIX_INT xsize, PIX_INT ysize, C
     if( tty < 0 ) tty = 0; \
     if( tty >= txt_ysize ) tty = txt_ysize - 1; \
     ttx = txt_xsize * tty + ttx; \
-    uchar pixel_alpha = txt_alpha[ ttx ]; \
+    uint8_t pixel_alpha = txt_alpha[ ttx ]; \
     COLOR pixel; \
     if( pixel_alpha ) pixel = txt[ ttx ];
 
 #define GET_TEXTURE_PIXEL_WITH_ALPHA_INTERP \
     COLOR p1, p2, p3, p4; \
     COLOR pixel, pixel2; \
-    uchar a1, a2, a3, a4; \
+    uint8_t a1, a2, a3, a4; \
     int ttx2, tty2, toff; \
     int ttx = ctx >> PIX_TEX_FIXED_MATH_PREC; \
     int tty = ty >> PIX_TEX_FIXED_MATH_PREC; \
@@ -668,9 +647,9 @@ void pix_vm_gfx_draw_fbox( PIX_INT x, PIX_INT y, PIX_INT xsize, PIX_INT ysize, C
     toff = txt_xsize * tty2 + ttx2; p2 = txt[ toff ]; a2 = txt_alpha[ toff ]; \
     int xc = ( ctx >> ( PIX_TEX_FIXED_MATH_PREC - 8 ) ) & 255; \
     int yc = ( ty >> ( PIX_TEX_FIXED_MATH_PREC - 8 ) ) & 255; \
-    uchar pixel_alpha = (uchar)( (int)( (int)a1 * ( 255 - xc ) + (int)a2 * xc ) >> 8 ); \
-    uchar pixel_alpha2 = (uchar)( (int)( (int)a3 * ( 255 - xc ) + (int)a4 * xc ) >> 8 ); \
-    pixel_alpha = (uchar)( (int)( (int)pixel_alpha * ( 255 - yc ) + (int)pixel_alpha2 * yc ) >> 8 ); \
+    uint8_t pixel_alpha = (uint8_t)( (int)( (int)a1 * ( 255 - xc ) + (int)a2 * xc ) >> 8 ); \
+    uint8_t pixel_alpha2 = (uint8_t)( (int)( (int)a3 * ( 255 - xc ) + (int)a4 * xc ) >> 8 ); \
+    pixel_alpha = (uint8_t)( (int)( (int)pixel_alpha * ( 255 - yc ) + (int)pixel_alpha2 * yc ) >> 8 ); \
     if( pixel_alpha ) \
     { \
 	pixel = blend( p1, p2, xc ); \
@@ -691,41 +670,40 @@ void pix_vm_gfx_draw_container(
     PIX_CID cnum,
     PIX_FLOAT x,
     PIX_FLOAT y,
-    PIX_FLOAT z,
-    PIX_FLOAT xsize, 
-    PIX_FLOAT ysize, 
-    PIX_INT tx, 
-    PIX_INT ty, 
-    PIX_INT txsize, 
-    PIX_INT tysize, 
-    COLOR color, 
+    PIX_FLOAT xsize,
+    PIX_FLOAT ysize,
+    PIX_INT tx,
+    PIX_INT ty,
+    PIX_INT txsize,
+    PIX_INT tysize,
+    COLOR color,
     pix_vm* vm )
 {
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     if( transp == 0 ) return;
-    
+
 #ifdef OPENGL
     if( vm->screen == PIX_GL_SCREEN )
     {
 	pix_vm_container_gl_data* gl = pix_vm_create_container_gl_data( cnum, vm );
-	if( gl == 0 ) return;
-	
-	float v[ 3 * 4 ];
+	if( !gl ) return;
+
+	float v[ 2 * 4 ];
 	float t[ 2 * 4 ];
-	v[ 0 ] = x; v[ 1 ] = y; v[ 2 ] = z;
-	v[ 3 ] = x + xsize; v[ 4 ] = y; v[ 5 ] = z;
-	v[ 6 ] = x; v[ 7 ] = y + ysize; v[ 8 ] = z;
-	v[ 9 ] = x + xsize; v[ 10 ] = y + ysize; v[ 11 ] = z;
-	t[ 0 ] = (float)tx / (float)gl->xsize; t[ 1 ] = (float)ty / (float)gl->ysize;
-	t[ 2 ] = (float)( tx + txsize ) / (float)gl->xsize; t[ 3 ] = (float)ty / (float)gl->ysize;
-	t[ 4 ] = (float)tx / (float)gl->xsize; t[ 5 ] = (float)( ty + tysize ) / (float)gl->ysize;
-	t[ 6 ] = (float)( tx + txsize ) / (float)gl->xsize; t[ 7 ] = (float)( ty + tysize ) / (float)gl->ysize;
+	v[ 0 ] = x; v[ 1 ] = y;
+	v[ 2 ] = x + xsize; v[ 3 ] = y;
+	v[ 4 ] = x; v[ 5 ] = y + ysize;
+	v[ 6 ] = x + xsize; v[ 7 ] = y + ysize;
+	t[ 0 ] = (float)tx / gl->xsize; t[ 1 ] = (float)ty / gl->ysize;
+        t[ 2 ] = (float)( tx + txsize ) / gl->xsize; t[ 3 ] = (float)ty / gl->ysize;
+        t[ 4 ] = (float)tx / gl->xsize; t[ 5 ] = (float)( ty + tysize ) / gl->ysize;
+        t[ 6 ] = (float)( tx + txsize ) / gl->xsize; t[ 7 ] = (float)( ty + tysize ) / gl->ysize;
 
         gl_program_struct* p;
         if( gl->texture_format == GL_ALPHA )
     	    p = vm->gl_prog_tex_alpha_solid;
 	else
-    	    p = vm->gl_prog_tex_rgb_solid;
+    	    p = vm->gl_prog_tex_rgba_solid;
     	if( vm->gl_user_defined_prog ) p = vm->gl_user_defined_prog;
         if( vm->gl_current_prog != p )
         {
@@ -734,16 +712,16 @@ void pix_vm_gfx_draw_container(
             glActiveTexture( GL_TEXTURE0 );
 	    glUniform1i( p->uniforms[ GL_PROG_UNI_TEXTURE ], 0 );
         }
-        glBindTexture( GL_TEXTURE_2D, gl->texture_id );
-        glUniform4f( p->uniforms[ GL_PROG_UNI_COLOR ], (float)red( color ) / 255, (float)green( color ) / 255, (float)blue( color ) / 255, (float)transp / 255 );
-        glVertexAttribPointer( p->attributes[ GL_PROG_ATT_POSITION ], 3, GL_FLOAT, false, 0, v );
+        GL_BIND_TEXTURE( vm->wm, gl->texture_id );
+        GL_CHANGE_PROG_COLOR( p, color, transp );
+        glVertexAttribPointer( p->attributes[ GL_PROG_ATT_POSITION ], 2, GL_FLOAT, false, 0, v );
         glVertexAttribPointer( p->attributes[ GL_PROG_ATT_TEX_COORD ], 2, GL_FLOAT, false, 0, t );
 	glDrawArrays( GL_TRIANGLE_STRIP, 0, 4 );
-	
+
 	return;
     }
 #endif
-    
+
     int screen_hxsize = vm->screen_xsize / 2;
     int screen_hysize = vm->screen_ysize / 2;
     
@@ -929,11 +907,11 @@ void pix_vm_gfx_draw_container(
 	COLORPTR txt = (COLORPTR)c->data;
 	int txt_xsize = c->xsize;
 	int txt_ysize = c->ysize;
-	uchar* txt_alpha = 0;
+	uint8_t* txt_alpha = 0;
 	if( (unsigned)c->alpha < (unsigned)vm->c_num )
         {
             pix_vm_container* alpha_cont = vm->c[ c->alpha ];
-            txt_alpha = (uchar*)alpha_cont->data;
+            txt_alpha = (uint8_t*)alpha_cont->data;
         }
 	
 	//Get key color:
@@ -1033,7 +1011,7 @@ void pix_vm_gfx_draw_container(
 				    if( !( uses_key && key == pixel ) ) 
 				    {
 					COLORIZE;
-					pixel_alpha = (uchar)( (int)pixel_alpha * (int)transp / 256 );
+					pixel_alpha = (uint8_t)( (int)pixel_alpha * (int)transp / 256 );
 					*scr = blend( *scr, pixel, pixel_alpha );
 					*zbuf = iz;
 				    }
@@ -1059,7 +1037,7 @@ void pix_vm_gfx_draw_container(
 				if( !( uses_key && key == pixel ) ) 
 				{
 				    COLORIZE;
-				    pixel_alpha = (uchar)( (int)pixel_alpha * (int)transp / 256 );
+				    pixel_alpha = (uint8_t)( (int)pixel_alpha * (int)transp / 256 );
 				    *scr = blend( *scr, pixel, pixel_alpha );
 				}
 				scr++;
@@ -1254,7 +1232,7 @@ void pix_vm_gfx_draw_container(
 				    if( !( uses_key && key == pixel ) ) 
 				    {
 					COLORIZE;
-					pixel_alpha = (uchar)( (int)pixel_alpha * (int)transp / 256 );
+					pixel_alpha = (uint8_t)( (int)pixel_alpha * (int)transp / 256 );
 					*scr = blend( *scr, pixel, pixel_alpha );
 					*zbuf = iz;
 				    }
@@ -1280,7 +1258,7 @@ void pix_vm_gfx_draw_container(
 				if( !( uses_key && key == pixel ) ) 
 				{
 				    COLORIZE;
-				    pixel_alpha = (uchar)( (int)pixel_alpha * (int)transp / 256 );
+				    pixel_alpha = (uint8_t)( (int)pixel_alpha * (int)transp / 256 );
 				    *scr = blend( *scr, pixel, pixel_alpha );
 				}
 				scr++;
@@ -1419,7 +1397,7 @@ int* pix_vm_gfx_get_zbuf( pix_vm* vm )
 		}
 		else 
 		{
-		    //blog( "ZBuffer must be INT32.\n" );
+		    //slog( "ZBuffer must be INT32.\n" );
 		}
 	    }
 	}
@@ -1427,28 +1405,32 @@ int* pix_vm_gfx_get_zbuf( pix_vm* vm )
     return zbuf;
 }
 
-// 0 - empty (this char can be ignored); 1 - new line possible (#$%); 2 - new line impossible (abcdef,.:)
-const static char g_break_char_action[ 96 ] = 
+// 0 - empty (this char can be ignored);
+// 1 - new line is possible: ( #$% ) ;
+// 2 - new line is not possible: ( abcdef,.: );
+const static char g_break_char_action[] = 
 {
-    0, 2, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 1, 
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 2, 1, 1, 1, 1, 1, 1, 2, 2, 1, 1, 2, 2, 2, 1,
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 2,
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 2, 
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 2,
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
     2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1
 };
 
-void pix_vm_gfx_draw_text( 
-    utf8_char* str, size_t str_size, 
-    PIX_FLOAT x, PIX_FLOAT y, PIX_FLOAT z, 
-    int align, 
-    COLOR color, 
+void pix_vm_gfx_draw_text(
+    char* str, PIX_INT str_size,
+    PIX_FLOAT x, PIX_FLOAT y,
+    int align,
+    COLOR color,
     int max_xsize,
-    int* out_xsize, int* out_ysize, 
-    bool dont_draw, 
+    int* out_xsize, int* out_ysize,
+    bool dont_draw,
     pix_vm* vm )
 {
-    uchar transp = vm->transp;
+    uint8_t transp = vm->transp;
     
     if( out_xsize || out_ysize )
     {
@@ -1459,10 +1441,10 @@ void pix_vm_gfx_draw_text(
     {
 	if( transp == 0 ) return;
     }
-    
+
     //UTF8 -> UTF32:
     size_t len = 0;
-    utf32_char c32;
+    uint32_t c32;
     while( *str )
     {
 	int size = utf8_to_utf32_char_safe( str, str_size, &c32 );
@@ -1471,35 +1453,36 @@ void pix_vm_gfx_draw_text(
 	str += size;
 	str_size -= size;
 	len++;
-	if( vm->text == 0 ) 
+	if( !vm->text ) 
 	{
-	    vm->text = (utf32_char*)bmem_new( sizeof( utf32_char ) );
+	    vm->text = SMEM_ALLOC2( uint32_t, 1 );
 	}
 	else 
 	{
-	    size_t old_size = bmem_get_size( vm->text ) / sizeof( utf32_char );
+	    size_t old_size = smem_get_size( vm->text ) / sizeof( uint32_t );
 	    if( old_size < len )
 	    {
 		//Resize the buffer:
-		vm->text = (utf32_char*)bmem_resize( vm->text, ( old_size * 2 ) * sizeof( utf32_char ) );
+		vm->text = SMEM_ZRESIZE2( vm->text, uint32_t, old_size * 2 );
 	    }
 	}
-	if( vm->text == 0 ) return;
+	if( !vm->text ) return;
 	vm->text[ len - 1 ] = c32;
 	if( str_size == 0 ) break;
     }
 
     //Get the lines:
+    bool lines_error = false;
     int space_char_ysize = 0;
     size_t lines = 0;
     int line_xsize = 0;
     int line_ysize = 0;
     int lines_xsize = 0;
     int lines_ysize = 0;
-    int word_end_xsize;
-    int word_end_ysize;
+    int word_end_xsize = 0;
+    int word_end_ysize = 0;
     size_t word_end_i = 0;
-    if( vm->text_lines == 0 ) vm->text_lines = (pix_vm_text_line*)bmem_new( sizeof( pix_vm_text_line ) );
+    if( vm->text_lines == 0 ) vm->text_lines = SMEM_ALLOC2( pix_vm_text_line, 1 );
     vm->text_lines[ lines ].offset = 0;
     for( size_t i = 0; i <= len; i++ )
     {
@@ -1516,11 +1499,7 @@ check_again:
 		pix_vm_font* font = pix_vm_get_font_for_char( ' ', vm );
 		if( font )
 		{
-		    pix_vm_container* cont = vm->c[ font->font ];
-		    if( cont )
-		    {
-			space_char_ysize = cont->ysize / font->ychars;
-		    }
+		    space_char_ysize = font->char_ysize;
 		}
 	    }
 	    if( space_char_ysize > line_ysize ) line_ysize = space_char_ysize;
@@ -1530,45 +1509,66 @@ check_again:
 	    if( line_xsize > lines_xsize ) lines_xsize = line_xsize;
 	    lines_ysize += line_ysize;
 	    lines++;
-	    size_t old_size = bmem_get_size( vm->text_lines ) / sizeof( pix_vm_text_line );
+	    size_t old_size = smem_get_size( vm->text_lines ) / sizeof( pix_vm_text_line );
 	    if( lines >= old_size )
-		vm->text_lines = (pix_vm_text_line*)bmem_resize( vm->text_lines, ( old_size * 2 ) * sizeof( pix_vm_text_line ) );
+		vm->text_lines = SMEM_ZRESIZE2( vm->text_lines, pix_vm_text_line, old_size * 2 );
 	    vm->text_lines[ lines ].offset = i;
+	    if( max_xsize > 0 )
+	    {
+		if( word_end_i )
+		{
+		    //Skip spaces at the beginning of the new line (only for wordwrap mode):
+		    while( i < len - 1 )
+		    {
+			if( vm->text[ i ] == ' ' )
+			    i++;
+			else
+			    break;
+		    }
+		    vm->text_lines[ lines ].offset = i;
+		}
+		if( i > 0 && i < len )
+		{
+		    if( vm->text[ i ] != 0xA ) i--; //Start of a word: we must correctly process its first char
+		}
+	    }
 	    line_xsize = 0;
 	    line_ysize = 0;
 	    word_end_i = 0;
 	}
 	else 
 	{
+	    //if( line_xsize == 0 ) vm->text[ i ] = '+';
 	    pix_vm_font* font = pix_vm_get_font_for_char( c32, vm );
-	    if( max_xsize > 0 )
-	    {
-		if( c32 < '/' || ( c32 >= ':' && c32 <= '@' ) || ( c32 >= '[' && c32 <= ' ' ) )
-		{
-		    word_end_i = i + 1;
-		    word_end_xsize = line_xsize;
-		    word_end_ysize = line_ysize;
-		}
-	    }
 	    int char_xsize = 0;
 	    int char_ysize = 0;
 	    if( font )
 	    {
-		pix_vm_container* cont = vm->c[ font->font ];
-		if( cont )
-		{
-		    char_xsize = cont->xsize / font->xchars;
-		    char_ysize = cont->ysize / font->ychars;
-		}
+		char_xsize = font->char_xsize;
+		char_ysize = font->char_ysize;
 	    }
 	    if( max_xsize > 0 )
 	    {
 		if( line_xsize + char_xsize > max_xsize )
 		{
 		    //We need to break the current word:
-		    int action;
-		    if( (unsigned)c32 < 96 ) action = g_break_char_action[ (unsigned)c32 ]; else action = 2;
-		    if( char_xsize > max_xsize ) action = 0;
+		    int action = 2;
+		    if( c32 < 128 ) action = g_break_char_action[ c32 ];
+		    //vm->text[ i ] = '0' + action;
+		    if( char_xsize > max_xsize ) 
+		    {
+			action = 0;
+			lines_error = true;
+			break;
+		    }
+		    if( action == 2 )
+		    {
+			if( word_end_i == 0 )
+			{
+			    //No end of previous word, so we just have to break the word in the current position:
+			    action = 1;
+			}
+		    }
 		    switch( action )
 		    {
 			case 0:
@@ -1576,23 +1576,31 @@ check_again:
 			    char_xsize = 0;
 			    char_ysize = 0;
 			    break;
-			case 1:			    
-			    //Make new line:
+			case 1:
+			    //Make a new line:
 			    c32 = 0xA;
-			    i--;
 			    goto check_again;
 			    break;
 			case 2:
 			    //Make new line and go to the end of the previous word:
-			    if( word_end_i )
-			    {
-				line_xsize = word_end_xsize;
-				line_ysize = word_end_ysize;
-				c32 = 0xA;
-				i = word_end_i;
-				goto check_again;
-			    }
+			    line_xsize = word_end_xsize;
+			    line_ysize = word_end_ysize;
+			    c32 = 0xA;
+			    i = word_end_i;
+			    goto check_again;
 			    break;
+			default: break;
+		    }
+		}
+		else
+		{
+		    if( c32 < 128 && g_break_char_action[ c32 ] <= 1 )
+		    {
+			//End of previous word:
+			//i + 1 = first char of the next word
+			word_end_i = i + 1;
+			word_end_xsize = line_xsize;
+			word_end_ysize = line_ysize;
 		    }
 		}
 	    }
@@ -1600,11 +1608,18 @@ check_again:
 	    if( char_ysize > line_ysize ) line_ysize = char_ysize;
 	}
     }
-    
+
+    if( lines_error )
+    {
+	lines = 0;
+	lines_xsize = 0;
+	lines_ysize = 0;
+    }
+
     //Save the bounds:
     if( out_xsize ) *out_xsize = lines_xsize;
     if( out_ysize ) *out_ysize = lines_ysize;
-    
+
     //Draw:
     if( transp && dont_draw == 0 )
     {
@@ -1614,12 +1629,14 @@ check_again:
 	{
 	    PIX_FLOAT line_x;
 	    PIX_FLOAT line_y;
-	    line_y = y - (PIX_FLOAT)lines_ysize / 2; //CENTER
+	    //line_y = y - (PIX_FLOAT)lines_ysize / 2; //CENTER
+	    line_y = y - ( lines_ysize / (int)2 ); //CENTER
 	    if( align & 1 ) line_y = y; //TOP
 	    if( align & 2 ) line_y = y - lines_ysize; //BOTTOM
 	    for( int l = 0; l < lines; l++ )
 	    {
-		line_x = x - (PIX_FLOAT)vm->text_lines[ l ].xsize / 2; //CENTER
+		//line_x = x - (PIX_FLOAT)vm->text_lines[ l ].xsize / 2; //CENTER
+		line_x = x - ( vm->text_lines[ l ].xsize / (int)2 ); //CENTER
 		if( align & 4 ) line_x = x; //LEFT
 		if( align & 8 ) line_x = x - vm->text_lines[ l ].xsize; //RIGHT
 		for( size_t i = vm->text_lines[ l ].offset; i < vm->text_lines[ l ].end; i++ )
@@ -1631,16 +1648,16 @@ check_again:
 			pix_vm_container* cont = vm->c[ font->font ];
 			if( cont )
 			{
-			    int char_xsize = cont->xsize / font->xchars;
-			    int char_ysize = cont->ysize / font->ychars;
+			    int char_xsize = font->char_xsize;
+			    int char_ysize = font->char_ysize;
 			    PIX_FLOAT yy = line_y + vm->text_lines[ l ].ysize - char_ysize;
-			    
+
 			    //Draw a char:
 			    c32 -= font->first;
-			    int char_x = ( c32 % font->xchars ) * char_xsize;
-			    int char_y = ( c32 / font->xchars ) * char_ysize;
-			    pix_vm_gfx_draw_container( font->font, line_x, yy, z, char_xsize, char_ysize, char_x, char_y, char_xsize, char_ysize, color, vm );
-			    
+			    int src_x = font->grid_xoffset + ( c32 % font->xchars ) * font->grid_cell_xsize;
+			    int src_y = font->grid_yoffset + ( c32 / font->xchars ) * font->grid_cell_ysize;
+			    pix_vm_gfx_draw_container( font->font, line_x, yy, char_xsize, char_ysize, src_x, src_y, font->char_xsize2, font->char_ysize2, color, vm );
+
 			    line_x += char_xsize;
 			}
 		    }
