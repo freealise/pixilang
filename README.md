@@ -12,4 +12,4 @@ pixilang3
 lib_* - auxiliary libraries for building the Pixilang from source;  
 ```
   
-TODO: integrate with curl  
+TODO: integrate with curl (real estate mgmt app)  
